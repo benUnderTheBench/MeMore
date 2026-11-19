@@ -6,9 +6,7 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
-    private bool isPlaying;
-    //ボタン9個の配列
-    [SerializeField] private ButtonBehavior[] buttons;
+    
 
     //使うフェーズ
     [SerializeField] private SetupPhase setupPhase;
@@ -26,33 +24,31 @@ public class GameManager : MonoBehaviour
     [SerializeField] private float indicateFlashDuration;
     //ボタンを押してから次に押せるようになるまでの時間
     [SerializeField] private float touchCooltime;
-    //リザルト画面で表示するパネル
+
+    //------UI
+    //ボタン9個の配列
+    [SerializeField] private ButtonBehavior[] buttons;
+    //終了時に表示するパネル
     [SerializeField] private GameObject resultPanel;
+    //一回だけ押せる、リトライボタン(スコアはそのまま)
+    [SerializeField] private GameObject extendGameButton;
+    //タイトルへ戻るボタン
+    [SerializeField] private GameObject titleButton;
+    //最終的なスコアを表示するテキスト
+    [SerializeField] private TextMeshProUGUI resultText;
     //現在のターン数を表示するテキスト
     [SerializeField] private TextMeshProUGUI turnText;
 
     void Start()
     {
         gameData = new GameData();
-        foreach(ButtonBehavior button in buttons){
-            button.setInputQueue(gamePlayPhase.inputQueue);
-            button.setCooltime(touchCooltime);
-            button.setIsInteractable(false);
-        }
-
-        setupPhase.setFlashDuration(indicateFlashDuration);
-        gamePlayPhase.setFlashDuration(touchFlashDuration);
-        gamePlayPhase.setTurnText(turnText);
-        resultPhase.setResultPannel(resultPanel);
+        UIController.initializeButtons(buttons,gamePlayPhase.inputQueue,touchCooltime);
+        
+        setupPhase.initialize(indicateFlashDuration,buttons);
+        gamePlayPhase.initialize(touchFlashDuration,turnText,buttons);
+        resultPhase.initialize(buttons, resultPanel,extendGameButton, titleButton, resultText);
     }
 
-    private void setIsInteractable(bool b)
-    {
-        foreach(ButtonBehavior button in buttons)
-        {
-            button.setIsInteractable(b);
-        }
-    }
     public void startMainRoop()
     {
         StartCoroutine(MainRoop());
@@ -60,48 +56,34 @@ public class GameManager : MonoBehaviour
     public IEnumerator MainRoop()
     {
         gameData.setIsPlaying(true);
+        
+        yield return StartCoroutine(setupPhase.Tick(gameData));
+        UIController.changeButtonsInteractability(buttons,true);
 
-        yield return StartCoroutine(setupPhase.Tick(gameData,buttons));
-        setIsInteractable(true);
-        
-        yield return StartCoroutine(gamePlayPhase.Tick(gameData,buttons));
-        setIsInteractable(false);
-        
         while (gameData.getIsPlaying())
         {
-            yield return new WaitForSeconds(waitDuration);
 
-            yield return StartCoroutine(setupPhase.Tick(gameData,buttons));
-            setIsInteractable(true);
-            
-            yield return StartCoroutine(gamePlayPhase.Tick(gameData,buttons));
-            setIsInteractable(false);
+            yield return StartCoroutine(gamePlayPhase.Tick(gameData));
+            UIController.changeButtonsInteractability(buttons,false);
+
+            if (gameData.getIsPlaying())
+            {
+                yield return new WaitForSeconds(waitDuration);
+
+                yield return StartCoroutine(setupPhase.Tick(gameData));
+                UIController.changeButtonsInteractability(buttons,true);
+            }
+            else
+            {
+                yield return StartCoroutine(resultPhase.Tick(gameData));
+            }
             
         }
-        yield return StartCoroutine(resultPhase.Tick(gameData,buttons));
         
     }
+
+    
 }
 
-public class GameData
-{
-    public List<int> expButtonList = new List<int>();
-    public List<int> actButtonList = new List<int>(); 
-    private bool isPlaying = false;
 
-    public void setIsPlaying(bool b)
-    {
-        isPlaying = b;
-    }   
-
-    public bool getIsPlaying()
-    {
-        return isPlaying;
-    }  
-}
-
-public interface IPhase
-{
-    public IEnumerator Tick(GameData gameData, ButtonBehavior[] buttons);
-}
 

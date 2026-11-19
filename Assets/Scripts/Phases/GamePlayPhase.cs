@@ -12,28 +12,45 @@ public class GamePlayPhase : MonoBehaviour,IPhase
     private float flashDuration = 0;
     private TextMeshProUGUI turnText;
     public Queue<int> inputQueue = new Queue<int>();
+    private ButtonBehavior[] buttons;
     
+    public void initialize(float duration,TextMeshProUGUI text,ButtonBehavior[] buttons)
+    {
+        setFlashDuration(duration);
+        setTurnText(text);
+        setButtons(buttons);
+    }
+
     //パラメータ設定
-    public void setFlashDuration(float duration)
+    private void setFlashDuration(float duration)
     {
         if(flashDuration == 0 && duration > 0)
         {
             flashDuration = duration;
         }
     }
-    public void setTurnText(TextMeshProUGUI text)
+    private void setTurnText(TextMeshProUGUI text)
     {
         if(turnText == null)
         {
             turnText = text;
         }
     }
+    private void setButtons(ButtonBehavior[] buttons)
+    {
+        if(this.buttons == null)
+        {
+            this.buttons = buttons;
+        }
+    }
 
     
-    public IEnumerator Tick(GameData gameData, ButtonBehavior[] buttons)
+    public IEnumerator Tick(GameData gameData)
     {
-        turnText.text = "0 / " + gameData.expButtonList.Count.ToString();
-        for(int i = 0; i < gameData.expButtonList.Count; i++)
+        int currentScore = gameData.expButtonList.Count;
+
+        UIController.refreshText(turnText,currentScore);
+        for(int i = 0; i < currentScore; i++)
         {
             while (gameData.getIsPlaying())
             {
@@ -45,17 +62,22 @@ public class GamePlayPhase : MonoBehaviour,IPhase
                 else
                 {
                     int aButton = inputQueue.Dequeue();
-                    gameData.actButtonList.Append(aButton);
+                    gameData.actButtonList.Add(aButton);
 
                     if(aButton == gameData.expButtonList[i])
                     {
                         Debug.Log("correct");
-                        turnText.text =  $"{i + 1} / {gameData.expButtonList.Count}";
+                        UIController.refreshText(turnText,currentScore,i);
                         yield return StartCoroutine(buttons[aButton].changeColor(Color.blue,flashDuration));
+                        if(i == currentScore - 1)
+                        {
+                            gameData.actButtonList.Clear();
+                        }
                         break;
                     }
                     else
                     {
+                        Debug.Log(gameData.actButtonList[gameData.actButtonList.Count - 1]);
                         Debug.Log("miss");
                         yield return StartCoroutine(buttons[aButton].changeColor(Color.red));
                         gameData.setIsPlaying(false);
@@ -69,7 +91,7 @@ public class GamePlayPhase : MonoBehaviour,IPhase
             
             
         }
-        gameData.actButtonList.Clear();
+        
         yield break;
 
     }

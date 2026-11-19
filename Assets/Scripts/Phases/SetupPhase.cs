@@ -6,8 +6,16 @@ public class SetupPhase : MonoBehaviour, IPhase
 {
     //次に押すボタンが光る時間
     private float flashDuration = 0;
+    private ButtonBehavior[] buttons;
+
+    public void initialize(float duration,ButtonBehavior[] buttons)
+    {
+        setFlashDuration(duration);
+        setButtons(buttons);
+    }
+
 //パラメータ設定
-    public void setFlashDuration(float duration)
+    private void setFlashDuration(float duration)
     {
         if(flashDuration == 0 && duration > 0)
         {
@@ -15,7 +23,15 @@ public class SetupPhase : MonoBehaviour, IPhase
         }
     }
 
-    public IEnumerator Tick(GameData gameData, ButtonBehavior[] buttons)
+    private void setButtons(ButtonBehavior[] buttons)
+    {
+        if(this.buttons == null)
+        {
+            this.buttons = buttons;
+        }
+    }
+
+    public IEnumerator Tick(GameData gameData)
     {
         int eButtonNum = Random.Range(minInclusive:0,maxExclusive:9);
         Debug.Log(eButtonNum);
